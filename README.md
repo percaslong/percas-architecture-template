@@ -16,26 +16,27 @@ Unity Version Target: 2022.3.62f2
 
 1. [Quick Start — Từ 0 đến game chạy](#1-quick-start--từ-0-đến-game-chạy)
 2. [Dependency Diagram](#2-dependency-diagram)
-3. [Cấu trúc thư mục](#3-cấu-trúc-thư-mục)
-4. [Bootstrap & Service Locator](#4-bootstrap--service-locator)
-5. [Service Lifecycle — Init / Dispose](#5-service-lifecycle--init--dispose)
-6. [Async Convention — UniTask](#6-async-convention--unitask)
-7. [ScriptableObject Configs](#7-scriptableobject-configs)
-8. [Event System](#8-event-system)
-9. [Booster / Command Pattern](#9-booster--command-pattern)
-10. [Tracking / Analytics](#10-tracking--analytics)
-11. [Obstacle / Registry Pattern](#11-obstacle--registry-pattern)
-12. [Object Pooling](#12-object-pooling)
-13. [UI Architecture](#13-ui-architecture)
-14. [Save / Load — Data Persistence](#14-save--load--data-persistence)
-15. [Scene Management](#15-scene-management)
-16. [Level Data Architecture](#16-level-data-architecture)
-17. [Error Handling & Defensive Coding](#17-error-handling--defensive-coding)
-18. [Testing & Debug](#18-testing--debug)
-19. [Code Standards](#19-code-standards)
-20. [Branch Strategy](#20-branch-strategy)
-21. [Project Setup Checklist](#21-project-setup-checklist)
-22. [Những thứ KHÔNG làm](#22-những-thứ-không-làm)
+3. [Core / Game Module — Cấu trúc thư mục](#3-core--game-module--cấu-trúc-thư-mục)
+4. [MVP Pattern](#4-mvp-pattern)
+5. [Bootstrap & Service Locator](#5-bootstrap--service-locator)
+6. [Service Lifecycle — Init / Dispose](#6-service-lifecycle--init--dispose)
+7. [Async Convention — UniTask](#7-async-convention--unitask)
+8. [ScriptableObject Configs](#8-scriptableobject-configs)
+9. [Event System](#9-event-system)
+10. [Booster / Command Pattern](#10-booster--command-pattern)
+11. [Tracking / Analytics](#11-tracking--analytics)
+12. [Obstacle / Registry Pattern](#12-obstacle--registry-pattern)
+13. [Object Pooling](#13-object-pooling)
+14. [UI Architecture](#14-ui-architecture)
+15. [Save / Load — Data Persistence](#15-save--load--data-persistence)
+16. [Scene Management](#16-scene-management)
+17. [Level Data Architecture](#17-level-data-architecture)
+18. [Error Handling & Defensive Coding](#18-error-handling--defensive-coding)
+19. [Testing & Debug](#19-testing--debug)
+20. [Code Standards](#20-code-standards)
+21. [Branch Strategy](#21-branch-strategy)
+22. [Project Setup Checklist](#22-project-setup-checklist)
+23. [Những thứ KHÔNG làm](#23-những-thứ-không-làm)
 
 ---
 
@@ -66,7 +67,7 @@ Unity Version Target: 2022.3.62f2
 
 1. Tạo scene gameplay chính.
 2. Thêm scene vào Build Settings.
-3. `GameContext.Start()` sẽ tự động load scene `Game` sau khi init xong (xem template trong [Section 4](#4-bootstrap--service-locator)).
+3. `GameContext.Start()` sẽ tự động load scene `Game` sau khi init xong (xem template trong [Section 5](#5-bootstrap--service-locator)).
 4. `GameContext` sống ở scene `Bootstrap` với `DontDestroyOnLoad` — các scene khác chỉ chứa gameplay.
 
 ### Bước 5 — Kiểm tra flow
@@ -79,113 +80,409 @@ Unity Version Target: 2022.3.62f2
        → Gameplay scripts gọi ServiceLocator.Get<T>() → OK
 ```
 
-**Nếu gặp lỗi:** xem [Error Handling & Defensive Coding](#17-error-handling--defensive-coding).
+**Nếu gặp lỗi:** xem [Error Handling & Defensive Coding](#18-error-handling--defensive-coding).
 
 ---
 
 ## 2. Dependency Diagram
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Bootstrap Scene                       │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │              GameContext (Singleton)               │  │
-│  │  ┌─────────────────────────────────────────────┐  │  │
-│  │  │           GameContextSettings (SO)          │  │  │
-│  │  │  ┌──────────┐ ┌──────────┐ ┌────────────┐  │  │  │
-│  │  │  │AudioConf │ │GridConf  │ │BoosterConf │  │  │  │
-│  │  │  └──────────┘ └──────────┘ └────────────┘  │  │  │
-│  │  │  ┌──────────────┐ ┌─────────────────────┐  │  │  │
-│  │  │  │PrefabRefs    │ │ UIPrefabs           │  │  │  │
-│  │  │  └──────────────┘ └─────────────────────┘  │  │  │
-│  │  │  ┌──────────────┐                          │  │  │
-│  │  │  │AllLevels     │                          │  │  │
-│  │  │  └──────────────┘                          │  │  │
-│  │  └─────────────────────────────────────────────┘  │  │
-│  │                      │                            │  │
-│  │                      ▼                            │  │
-│  │  ┌─────────────────────────────────────────────┐  │  │
-│  │  │         ServiceLocator (Static)             │  │  │
-│  │  │  ┌────────────┐  ┌──────────────────────┐   │  │  │
-│  │  │  │ GameEvent   │  │ UserDataService       │   │  │  │
-│  │  │  │ Service     │  │ (JsonConvert+PlayerPrefs)│  │  │  │
-│  │  │  └──────┬─────┘  └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         ├────────▶│ AudioService         │   │  │  │
-│  │  │         │         └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         ├────────▶│ SceneService         │   │  │  │
-│  │  │         │         └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         ├────────▶│ LevelManager         │   │  │  │
-│  │  │         │         └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         ├────────▶│ UIService            │   │  │  │
-│  │  │         │         └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         ├────────▶│ BoosterService       │   │  │  │
-│  │  │         │         └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         ├────────▶│ AnalyticsService     │   │  │  │
-│  │  │         │         └──────────────────────┘   │  │  │
-│  │  │         │         ┌──────────────────────┐   │  │  │
-│  │  │         └────────▶│ RemoteConfigService  │   │  │  │
-│  │  │                   └──────────────────────┘   │  │  │
-│  │  └─────────────────────────────────────────────┘  │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-         │
-         ▼ LoadSceneAsync
-┌─────────────────────────────────────────────────────────┐
-│                     Game Scene                          │
-│  Controllers / Elements / UI                            │
-│  → Tất cả gọi ServiceLocator.Get<T>() để lấy service   │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                      Bootstrap Scene                         │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │                GameContext (Singleton)                  │  │
+│  │                                                        │  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │            GameContextSettings (SO)              │  │  │
+│  │  │                                                  │  │  │
+│  │  │  ┌────────────┐ ┌────────────┐ ┌─────────────┐  │  │  │
+│  │  │  │ AudioConf  │ │ GridConf   │ │BoosterConf  │  │  │  │
+│  │  │  └────────────┘ └────────────┘ └─────────────┘  │  │  │
+│  │  │  ┌────────────┐ ┌────────────┐ ┌─────────────┐  │  │  │
+│  │  │  │ EconomyConf│ │ UIPrefabs  │ │ PrefabRefs  │  │  │  │
+│  │  │  └────────────┘ └────────────┘ └─────────────┘  │  │  │
+│  │  │  ┌────────────┐                                 │  │  │
+│  │  │  │ AllLevels   │                                 │  │  │
+│  │  │  └────────────┘                                 │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  │                         │                              │  │
+│  │                         ▼                              │  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │              ServiceLocator (Static)             │  │  │
+│  │  │                                                  │  │  │
+│  │  │  ┌─────────────────┐  ┌───────────────────────┐  │  │  │
+│  │  │  │ GameEventService│  │ UserDataService       │  │  │  │
+│  │  │  │                 │  │ (JsonConvert+Prefs)   │  │  │  │
+│  │  │  └────────┬────────┘  └───────────────────────┘  │  │  │
+│  │  │           │                                      │  │  │
+│  │  │           ├──▶ AudioService                      │  │  │
+│  │  │           ├──▶ SceneService                      │  │  │
+│  │  │           ├──▶ LevelManager                      │  │  │
+│  │  │           ├──▶ UIService                         │  │  │
+│  │  │           ├──▶ BoosterService                    │  │  │
+│  │  │           ├──▶ AnalyticsService                  │  │  │
+│  │  │           └──▶ RemoteConfigService               │  │  │
+│  │  │                                                  │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+                            │
+                            ▼ LoadSceneAsync (Additive)
+┌──────────────────────────────────────────────────────────────┐
+│                        Game Scene                            │
+│                                                              │
+│   Model (pure C#) ◄──► Presenter ◄──► View (MonoBehaviour)  │
+│                            │                                 │
+│                            ▼                                 │
+│              ServiceLocator.Get<T>() để dùng service         │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Mũi tên `──▶` = "subscribe / dùng event từ"**. GameEventService là trung tâm, các service khác subscribe event từ nó.
+**`──▶` = subscribe / dùng event từ GameEventService.**
+**Core** = Scripts/Core/ (Bootstrap + Services + Pool + Events). **Game** = Scripts/Game/ (MVP gameplay + Booster + Obstacles + UI screens).
 
 ---
 
-## 3. Cấu trúc thư mục
+## 3. Core / Game Module — Cấu trúc thư mục
+
+### Quyết định kiến trúc
+- Code chia thành **Core** (module tái sử dụng) và **Game** (code riêng dự án).
+- Core copy nguyên sang dự án mới — không sửa, không fork.
+- Game chứa gameplay, config, UI screens riêng dự án — bắt đầu trống khi tạo project mới.
+- Namespace root: `Percas.Core.*` cho Core, `Percas.[GameName].*` cho Game.
+- Gameplay code trong Game theo **MVP pattern** (xem [Section 4](#4-mvp-pattern)).
 
 ```
 Assets/
-├── Scripts/                        ← TẤT CẢ CODE MỚI ĐI VÀO ĐÂY
-│   ├── Bootstrap/                  GameContext, ServiceLocator, IInitializable
-│   ├── Services/                   Các service (Audio, UserData, UI, ...)
-│   │   ├── Audio/
-│   │   ├── UserData/               UserDataService, data classes (ProgressData, EconomyData, ...)
-│   │   ├── UI/                     UIService, BaseScreen, BasePopup
-│   │   ├── Scene/                  SceneService
-│   │   ├── Level/                  LevelManager
-│   │   ├── RemoteConfig/           RemoteConfigService
-│   │   └── ...
-│   ├── GamePlay/                   Code gameplay chính
-│   │   ├── Controller/
-│   │   ├── Element/
-│   │   └── ...
-│   ├── Config/                     ScriptableObject config classes (AudioConfigSO, UIPrefabsSO, AllLevelsSO, ...)
-│   ├── Events/                     GameEventService
-│   ├── Analytics/                  AnalyticsService, ITrackingEvent, event classes
-│   ├── Booster/                    BoosterCommand, BoosterService
-│   ├── Obstacles/                  IObstacleElement, ObstacleRegistry, ObstacleDefinition
-│   ├── Pool/                       ObjectPool<T>, PoolManager
-│   └── Utils.cs                    ← MỌI utility/helper function đều vào đây (1 file duy nhất)
+├── Scripts/
+│   ├── Core/                                ← MODULE TÁI SỬ DỤNG — copy nguyên sang dự án khác
+│   │   ├── Bootstrap/                       GameContext, ServiceLocator, IInitializable
+│   │   ├── Services/
+│   │   │   ├── Audio/                       AudioService, AudioConfigSO
+│   │   │   ├── UserData/                    UserDataService, generic Save/Load
+│   │   │   ├── UI/                          UIService, BaseScreen, BasePopup, UIPrefabsSO
+│   │   │   ├── Scene/                       SceneService
+│   │   │   ├── Analytics/                   AnalyticsService, ITrackingEvent
+│   │   │   └── RemoteConfig/                RemoteConfigService
+│   │   ├── Pool/                            ObjectPool<T>, IPoolable
+│   │   ├── Events/                          GameEventService (base events only)
+│   │   └── Utils.cs
+│   │
+│   └── Game/                                ← CODE RIÊNG DỰ ÁN — không tái sử dụng
+│       ├── Config/                          GameContextSettings, SO configs riêng game
+│       ├── GamePlay/
+│       │   ├── Model/                       Pure C# — data + business logic (MVP)
+│       │   ├── View/                        MonoBehaviour — visual, passive (MVP)
+│       │   ├── Presenter/                   Logic class — điều phối Model ↔ View (MVP)
+│       │   └── Element/                     Game elements (SandElement, ...)
+│       ├── Booster/                         BoosterCommand subclasses riêng game
+│       ├── Obstacles/                       Obstacle types riêng game
+│       ├── Events/                          Game-specific events (extends Core events)
+│       ├── Level/                           LevelManager, LevelDataSO, AllLevelsSO
+│       └── UI/                              Game-specific screens/popups
 │
-├── Plugins/                        ← Package .unitypackage import vào đây (UniTask, DOTween, ...)
+├── Plugins/                                 ← Package .unitypackage (UniTask, DOTween, ...)
 │
-└── Resources/                      ← Chỉ dùng cho asset cần load động qua Resources.Load (hạn chế tối đa)
+└── ScriptableObjects/                       ← SO assets (config, levels, prefab refs)
+    ├── Config/
+    └── Levels/
 ```
 
-**Nguyên tắc:**
+### Nguyên tắc phân chia Core vs Game
+
+| Vào Core nếu... | Vào Game nếu... |
+|---|---|
+| Dùng được ở mọi dự án không cần sửa | Chỉ có ý nghĩa trong dự án này |
+| Không reference game-specific type | Reference game-specific type (BoosterType, ElementType...) |
+| API ổn định, ít thay đổi | Thay đổi theo gameplay design |
+| Ví dụ: ServiceLocator, ObjectPool, BaseScreen | Ví dụ: MagnetBoosterCommand, SandElement, ResultPopup |
+
+### Namespace Convention
+
+```csharp
+// Core — tái sử dụng
+namespace Percas.Core.Bootstrap { ... }
+namespace Percas.Core.Services.Audio { ... }
+namespace Percas.Core.Services.UI { ... }
+namespace Percas.Core.Pool { ... }
+
+// Game — riêng dự án (thay SandLoop bằng tên game)
+namespace Percas.SandLoop.GamePlay.Model { ... }
+namespace Percas.SandLoop.GamePlay.View { ... }
+namespace Percas.SandLoop.GamePlay.Presenter { ... }
+namespace Percas.SandLoop.Booster { ... }
+namespace Percas.SandLoop.UI { ... }
+```
+
+### Cách reuse Core ở dự án mới
+
+1. Copy nguyên folder `Assets/Scripts/Core/` sang project mới.
+2. Tạo folder `Assets/Scripts/Game/` trống.
+3. Tạo `GameContextSettings` SO trong `Game/Config/`.
+4. Bắt đầu viết game-specific code trong `Game/`.
+
+**Không fork Core.** Nếu fix bug trong Core ở project A → copy ngược lại template → copy sang các project khác.
+
+### Nguyên tắc chung
 - Tất cả code nằm trong `Assets/Scripts/` — không tạo thư mục script ở nơi khác.
-- Thư mục phải khớp với namespace (xem [Code Standards](#19-code-standards)).
+- Thư mục phải khớp với namespace (xem [Code Standards](#20-code-standards)).
 - Không tạo thư mục rỗng — chỉ tạo khi có file đầu tiên cần đặt vào.
 
 ---
 
-## 4. Bootstrap & Service Locator
+## 4. MVP Pattern
+
+### Quyết định kiến trúc
+- Áp dụng **MVP (Model-View-Presenter)** cho gameplay code trong `Game/GamePlay/`.
+- **Model** = pure C# class, chứa data + business logic. Không MonoBehaviour, không Unity dependency.
+- **View** = MonoBehaviour, passive — chỉ render và fire input events. Không chứa business logic.
+- **Presenter** = logic class, kết nối Model ↔ View. Truy cập Service qua ServiceLocator.
+- Services (Section 5) vẫn là global infrastructure — MVP chỉ áp dụng ở **feature level**.
+
+### Flow dữ liệu
+
+```
+User Input → View → Presenter → Model (update data)
+                                   ↓
+                         Model fires event
+                                   ↓
+                    Presenter ← receives event → View (re-render)
+                         ↓
+                    ServiceLocator (save, analytics, scene change...)
+```
+
+### Template: MVP cho Lives System
+
+```csharp
+// ===== MODEL — Pure C#, no MonoBehaviour =====
+// Assets/Scripts/Game/GamePlay/Model/LivesModel.cs
+namespace Percas.SandLoop.GamePlay.Model
+{
+    public class LivesModel
+    {
+        #region Constants
+        private const int MAX_LIVES = 5;
+        #endregion
+
+        #region Events
+        /// <summary>Fired khi số lives thay đổi. Presenter subscribe.</summary>
+        public Action<int> OnLivesChanged { get; set; }
+        #endregion
+
+        #region Properties
+        public int CurrentLives { get; private set; }
+        public bool HasLives => CurrentLives > 0;
+        public bool IsFull => CurrentLives >= MAX_LIVES;
+        #endregion
+
+        #region Constructor
+        public LivesModel(int initialLives)
+        {
+            CurrentLives = initialLives;
+        }
+        #endregion
+
+        #region Public Methods
+        /// <summary>Trừ 1 life. Trả về true nếu còn lives, false nếu hết.</summary>
+        public bool SpendLife()
+        {
+            if (CurrentLives <= 0) return false;
+            CurrentLives--;
+            OnLivesChanged?.Invoke(CurrentLives);
+            return true;
+        }
+
+        /// <summary>Thêm lives (từ reward, purchase, ...).</summary>
+        public void AddLives(int amount)
+        {
+            CurrentLives = Math.Min(CurrentLives + amount, MAX_LIVES);
+            OnLivesChanged?.Invoke(CurrentLives);
+        }
+
+        /// <summary>Hoàn trả 1 life (player thắng level → refund).</summary>
+        public void RefundLife()
+        {
+            if (IsFull) return;
+            CurrentLives++;
+            OnLivesChanged?.Invoke(CurrentLives);
+        }
+        #endregion
+    }
+}
+
+// ===== VIEW — MonoBehaviour, passive =====
+// Assets/Scripts/Game/GamePlay/View/LivesView.cs
+namespace Percas.SandLoop.GamePlay.View
+{
+    public class LivesView : MonoBehaviour
+    {
+        #region Fields
+        [SerializeField] private TMP_Text _livesText;
+        [SerializeField] private Image[] _heartIcons;
+        [SerializeField] private Button _playButton;
+        #endregion
+
+        #region Events
+        /// <summary>Fired khi player bấm nút Play. Presenter subscribe.</summary>
+        public Action OnPlayTapped { get; set; }
+        #endregion
+
+        #region Public Methods
+        /// <summary>Cập nhật UI hiển thị số lives. View KHÔNG giữ state.</summary>
+        public void UpdateLivesDisplay(int currentLives)
+        {
+            _livesText.text = $"{currentLives}";
+            for (int i = 0; i < _heartIcons.Length; i++)
+                _heartIcons[i].enabled = i < currentLives;
+        }
+
+        /// <summary>Enable/disable nút Play dựa trên còn lives hay không.</summary>
+        public void SetPlayButtonInteractable(bool hasLives)
+        {
+            _playButton.interactable = hasLives;
+        }
+        #endregion
+
+        #region Unity Callbacks
+        public void HandlePlayButtonClick()
+        {
+            // Fire event → Presenter xử lý. View KHÔNG check logic "còn lives không?"
+            OnPlayTapped?.Invoke();
+        }
+        #endregion
+    }
+}
+
+// ===== PRESENTER — Kết nối Model ↔ View =====
+// Assets/Scripts/Game/GamePlay/Presenter/LivesPresenter.cs
+namespace Percas.SandLoop.GamePlay.Presenter
+{
+    public class LivesPresenter
+    {
+        #region Fields
+        private readonly LivesModel _model;
+        private readonly LivesView _view;
+        private readonly GameEventService _events;
+        private readonly UserDataService _userData;
+        #endregion
+
+        #region Constructor
+        public LivesPresenter(LivesModel model, LivesView view)
+        {
+            _model = model;
+            _view = view;
+            _events = ServiceLocator.Get<GameEventService>();
+            _userData = ServiceLocator.Get<UserDataService>();
+
+            // View → Presenter
+            _view.OnPlayTapped += HandlePlayTapped;
+
+            // Model → Presenter → View
+            _model.OnLivesChanged += HandleLivesChanged;
+
+            // Global events → Presenter
+            _events.OnLevelComplete += HandleLevelComplete;
+            _events.OnLevelFail += HandleLevelFail;
+
+            // Init view
+            _view.UpdateLivesDisplay(_model.CurrentLives);
+            _view.SetPlayButtonInteractable(_model.HasLives);
+        }
+        #endregion
+
+        #region Public Methods
+        public void Dispose()
+        {
+            _view.OnPlayTapped -= HandlePlayTapped;
+            _model.OnLivesChanged -= HandleLivesChanged;
+            _events.OnLevelComplete -= HandleLevelComplete;
+            _events.OnLevelFail -= HandleLevelFail;
+        }
+        #endregion
+
+        #region Private Methods
+        private void HandlePlayTapped()
+        {
+            // Trừ 1 life khi bắt đầu chơi
+            if (_model.SpendLife())
+            {
+                _userData.Lives.currentLives = _model.CurrentLives;
+                _userData.SaveLives();
+                // Bắt đầu level...
+            }
+        }
+
+        private void HandleLevelComplete()
+        {
+            // Thắng → hoàn trả life
+            _model.RefundLife();
+            _userData.Lives.currentLives = _model.CurrentLives;
+            _userData.SaveLives();
+        }
+
+        private void HandleLevelFail()
+        {
+            // Thua → không hoàn trả, đã trừ rồi
+            // Chỉ save để đảm bảo data đồng bộ
+            _userData.SaveLives();
+        }
+
+        private void HandleLivesChanged(int currentLives)
+        {
+            // Model thay đổi → cập nhật View
+            _view.UpdateLivesDisplay(currentLives);
+            _view.SetPlayButtonInteractable(_model.HasLives);
+        }
+        #endregion
+    }
+}
+```
+
+**Tóm tắt flow Lives System:**
+```
+Player bấm Play → View fire OnPlayTapped
+    → Presenter gọi Model.SpendLife() (trừ 1 life)
+    → Model fire OnLivesChanged(4)
+    → Presenter cập nhật View (hiện 4 hearts)
+    → Presenter save UserData
+
+Player thắng → Event OnLevelComplete
+    → Presenter gọi Model.RefundLife() (cộng 1 life)
+    → Model fire OnLivesChanged(5)
+    → Presenter cập nhật View (hiện 5 hearts)
+
+Player thua → Event OnLevelFail
+    → Không cộng lại (đã trừ trước đó)
+    → Nếu lives = 0 → View disable nút Play
+```
+
+### Quy tắc MVP
+
+| Layer | Được làm | KHÔNG được làm |
+|---|---|---|
+| **Model** | Hold data, business logic, fire data-changed events | Reference View, gọi MonoBehaviour/Unity API, render |
+| **View** | Render, animation, VFX, fire input events, `[SerializeField]` | Business logic, truy cập Model trực tiếp, gọi Service |
+| **Presenter** | Kết nối Model ↔ View, gọi Service, handle flow | Hold state dài hạn (state ở Model), render (render ở View) |
+
+### MVP kết hợp với Service architecture
+
+**Services = global, shared infrastructure. Presenter = feature-level orchestration.**
+
+Presenter gọi `ServiceLocator.Get<T>()` để truy cập services. Services không biết gì về MVP — chúng chỉ cung cấp API.
+
+### Khi nào dùng MVP, khi nào không?
+
+| Dùng MVP | Không cần MVP |
+|---|---|
+| Gameplay features có logic + visual phức tạp | Service classes (đã có pattern riêng) |
+| Grid, Board, Puzzle mechanics | Config SO (không có logic) |
+| Features cần unit test Model riêng | Simple UI popup (data quá đơn giản) |
+| Features sẽ iterate nhiều | One-off scripts, editor tools |
+
+---
+
+## 5. Bootstrap & Service Locator
 
 ### Quyết định kiến trúc
 - **Chỉ một singleton duy nhất:** `GameContext` — MonoBehaviour, `DontDestroyOnLoad`.
@@ -196,12 +493,12 @@ Assets/
 ### Template: GameContext.cs
 
 ```csharp
-// Assets/Scripts/Bootstrap/GameContext.cs
+// Assets/Scripts/Core/Bootstrap/GameContext.cs
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace YourGame.Bootstrap
+namespace Percas.Core.Bootstrap
 {
     public class GameContext : MonoBehaviour
     {
@@ -273,13 +570,13 @@ namespace YourGame.Bootstrap
 ### Template: ServiceLocator.cs
 
 ```csharp
-// Assets/Scripts/Bootstrap/ServiceLocator.cs
+// Assets/Scripts/Core/Bootstrap/ServiceLocator.cs
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace YourGame.Bootstrap
+namespace Percas.Core.Bootstrap
 {
     public static class ServiceLocator
     {
@@ -360,7 +657,7 @@ public class SomeController : MonoBehaviour
 
 ---
 
-## 5. Service Lifecycle — Init / Dispose
+## 6. Service Lifecycle — Init / Dispose
 
 ### Quyết định kiến trúc
 - Service nào cần init async (load data, chờ SDK) → implement `IInitializable`.
@@ -370,10 +667,10 @@ public class SomeController : MonoBehaviour
 ### Template: IInitializable.cs
 
 ```csharp
-// Assets/Scripts/Bootstrap/IInitializable.cs
+// Assets/Scripts/Core/Bootstrap/IInitializable.cs
 using Cysharp.Threading.Tasks;
 
-namespace YourGame.Bootstrap
+namespace Percas.Core.Bootstrap
 {
     /// <summary>Service cần init async implement interface này.</summary>
     public interface IInitializable
@@ -410,7 +707,7 @@ public class UserDataService : System.IDisposable
 
 ---
 
-## 6. Async Convention — UniTask
+## 7. Async Convention — UniTask
 
 ### Quyết định kiến trúc
 - **Dùng UniTask cho tất cả async** — không dùng Coroutine, không dùng `System.Threading.Tasks.Task`.
@@ -513,7 +810,7 @@ public class RemoteConfigService : IInitializable
 
 ---
 
-## 7. ScriptableObject Configs
+## 8. ScriptableObject Configs
 
 ### Quyết định kiến trúc
 - Mỗi service có một config SO riêng.
@@ -525,8 +822,8 @@ public class RemoteConfigService : IInitializable
 ### Pattern SO — chỉ chứa giá trị mặc định
 
 ```csharp
-// Assets/Scripts/Config/AudioConfigSO.cs
-namespace YourGame.Config
+// Assets/Scripts/Core/Config/AudioConfigSO.cs
+namespace Percas.Core.Config
 {
     [CreateAssetMenu(menuName = "Config/Audio")]
     public class AudioConfigSO : ScriptableObject
@@ -539,8 +836,8 @@ namespace YourGame.Config
     }
 }
 
-// Assets/Scripts/Config/EconomyConfigSO.cs
-namespace YourGame.Config
+// Assets/Scripts/Core/Config/EconomyConfigSO.cs
+namespace Percas.Core.Config
 {
     [CreateAssetMenu(menuName = "Config/Economy")]
     public class EconomyConfigSO : ScriptableObject
@@ -562,10 +859,10 @@ namespace YourGame.Config
 ### Remote Config — Override tập trung
 
 ```csharp
-// Assets/Scripts/Services/RemoteConfig/RemoteConfigService.cs
+// Assets/Scripts/Core/Services/RemoteConfig/RemoteConfigService.cs
 using Cysharp.Threading.Tasks;
 
-namespace YourGame.Services.RemoteConfig
+namespace Percas.Core.Services.RemoteConfig
 {
     /// <summary>
     /// Fetch remote values và ghi đè lên SO.
@@ -644,8 +941,8 @@ namespace YourGame.Services.RemoteConfig
 ### GameContextSettings — SO trung tâm
 
 ```csharp
-// Assets/Scripts/Bootstrap/GameContextSettings.cs
-namespace YourGame.Bootstrap
+// Assets/Scripts/Core/Bootstrap/GameContextSettings.cs
+namespace Percas.Core.Bootstrap
 {
     [CreateAssetMenu(menuName = "Config/GameContextSettings")]
     public class GameContextSettings : ScriptableObject
@@ -667,8 +964,8 @@ namespace YourGame.Bootstrap
 ### PrefabReferencesSO
 
 ```csharp
-// Assets/Scripts/Config/PrefabReferencesSO.cs
-namespace YourGame.Config
+// Assets/Scripts/Core/Config/PrefabReferencesSO.cs
+namespace Percas.Core.Config
 {
     [CreateAssetMenu(menuName = "Config/PrefabReferences")]
     public class PrefabReferencesSO : ScriptableObject
@@ -688,7 +985,7 @@ namespace YourGame.Config
 
 ---
 
-## 8. Event System
+## 9. Event System
 
 ### Quyết định kiến trúc
 - `GameEventService` là plain class, không có interface.
@@ -699,8 +996,8 @@ namespace YourGame.Config
 ### Template: GameEventService.cs
 
 ```csharp
-// Assets/Scripts/Events/GameEventService.cs
-namespace YourGame.Events
+// Assets/Scripts/Core/Events/GameEventService.cs
+namespace Percas.Core.Events
 {
     public class GameEventService
     {
@@ -771,7 +1068,7 @@ _events.OnLevelComplete += () => Debug.Log("Done");
 
 ---
 
-## 9. Booster / Command Pattern
+## 10. Booster / Command Pattern
 
 ### Quyết định kiến trúc
 - Tất cả booster logic sống trong `BoosterService` + từng `BoosterCommand`.
@@ -781,8 +1078,8 @@ _events.OnLevelComplete += () => Debug.Log("Done");
 ### Template
 
 ```csharp
-// Assets/Scripts/Booster/BoosterCommand.cs
-namespace YourGame.Booster
+// Assets/Scripts/Game/Booster/BoosterCommand.cs
+namespace Percas.SandLoop.Booster
 {
     public abstract class BoosterCommand
     {
@@ -791,8 +1088,8 @@ namespace YourGame.Booster
     }
 }
 
-// Assets/Scripts/Booster/MagnetBoosterCommand.cs
-namespace YourGame.Booster
+// Assets/Scripts/Game/Booster/MagnetBoosterCommand.cs
+namespace Percas.SandLoop.Booster
 {
     public class MagnetBoosterCommand : BoosterCommand
     {
@@ -803,8 +1100,8 @@ namespace YourGame.Booster
     }
 }
 
-// Assets/Scripts/Booster/BoosterService.cs
-namespace YourGame.Booster
+// Assets/Scripts/Game/Booster/BoosterService.cs
+namespace Percas.SandLoop.Booster
 {
     public class BoosterService
     {
@@ -833,7 +1130,7 @@ namespace YourGame.Booster
 
 ---
 
-## 10. Tracking / Analytics
+## 11. Tracking / Analytics
 
 ### Quyết định kiến trúc
 - Chỉ `AnalyticsService` được gọi SDK tracking trực tiếp.
@@ -843,8 +1140,8 @@ namespace YourGame.Booster
 ### Template
 
 ```csharp
-// Assets/Scripts/Analytics/ITrackingEvent.cs
-namespace YourGame.Analytics
+// Assets/Scripts/Core/Services/Analytics/ITrackingEvent.cs
+namespace Percas.Core.Services.Analytics
 {
     public interface ITrackingEvent
     {
@@ -853,8 +1150,8 @@ namespace YourGame.Analytics
     }
 }
 
-// Assets/Scripts/Analytics/Events/LevelCompleteEvent.cs
-namespace YourGame.Analytics
+// Assets/Scripts/Core/Services/Analytics/Events/LevelCompleteEvent.cs
+namespace Percas.Core.Services.Analytics
 {
     public class LevelCompleteEvent : ITrackingEvent
     {
@@ -875,8 +1172,8 @@ namespace YourGame.Analytics
     }
 }
 
-// Assets/Scripts/Analytics/AnalyticsService.cs
-namespace YourGame.Analytics
+// Assets/Scripts/Core/Services/Analytics/AnalyticsService.cs
+namespace Percas.Core.Services.Analytics
 {
     public class AnalyticsService
     {
@@ -896,15 +1193,15 @@ _analytics.Track(new LevelCompleteEvent(level: 5, moves: 30, duration: 120f));
 
 ---
 
-## 11. Obstacle / Registry Pattern
+## 12. Obstacle / Registry Pattern
 
 Dùng khi game có nhiều loại object/element cần spawn động và muốn thêm loại mới mà **không sửa code cũ**.
 
 ### Template: Interface
 
 ```csharp
-// Assets/Scripts/Obstacles/IObstacleElement.cs
-namespace YourGame.Obstacles
+// Assets/Scripts/Game/Obstacles/IObstacleElement.cs
+namespace Percas.SandLoop.Obstacles
 {
     public interface IObstacleElement
     {
@@ -923,8 +1220,8 @@ namespace YourGame.Obstacles
 ### Template: ObstacleDefinition SO
 
 ```csharp
-// Assets/Scripts/Obstacles/ObstacleDefinition.cs
-namespace YourGame.Obstacles
+// Assets/Scripts/Game/Obstacles/ObstacleDefinition.cs
+namespace Percas.SandLoop.Obstacles
 {
     [CreateAssetMenu(menuName = "Obstacles/ObstacleDefinition")]
     public class ObstacleDefinition : ScriptableObject
@@ -942,8 +1239,8 @@ namespace YourGame.Obstacles
 ### Template: ObstacleRegistry SO
 
 ```csharp
-// Assets/Scripts/Obstacles/ObstacleRegistry.cs
-namespace YourGame.Obstacles
+// Assets/Scripts/Game/Obstacles/ObstacleRegistry.cs
+namespace Percas.SandLoop.Obstacles
 {
     [CreateAssetMenu(menuName = "Obstacles/ObstacleRegistry")]
     public class ObstacleRegistry : ScriptableObject
@@ -992,7 +1289,7 @@ namespace YourGame.Obstacles
 
 ---
 
-## 12. Object Pooling
+## 13. Object Pooling
 
 ### Quyết định kiến trúc
 - Bất kỳ object nào spawn/destroy **nhiều hơn 10 lần/giây** → dùng pool.
@@ -1003,8 +1300,8 @@ namespace YourGame.Obstacles
 ### Template: IPoolable
 
 ```csharp
-// Assets/Scripts/Pool/IPoolable.cs
-namespace YourGame.Pool
+// Assets/Scripts/Core/Pool/IPoolable.cs
+namespace Percas.Core.Pool
 {
     public interface IPoolable
     {
@@ -1020,8 +1317,8 @@ namespace YourGame.Pool
 ### Template: ObjectPool
 
 ```csharp
-// Assets/Scripts/Pool/ObjectPool.cs
-namespace YourGame.Pool
+// Assets/Scripts/Core/Pool/ObjectPool.cs
+namespace Percas.Core.Pool
 {
     public class ObjectPool<T> where T : Component, IPoolable
     {
@@ -1097,7 +1394,7 @@ sandPool.Return(sand);
 
 ---
 
-## 13. UI Architecture
+## 14. UI Architecture
 
 ### Quyết định kiến trúc
 - `UIService` quản lý tất cả Screen và Popup — là entry point duy nhất để show/hide UI.
@@ -1109,8 +1406,8 @@ sandPool.Return(sand);
 ### Template: BaseScreen
 
 ```csharp
-// Assets/Scripts/Services/UI/BaseScreen.cs
-namespace YourGame.Services.UI
+// Assets/Scripts/Core/Services/UI/BaseScreen.cs
+namespace Percas.Core.Services.UI
 {
     [RequireComponent(typeof(CanvasGroup))]
     public abstract class BaseScreen : MonoBehaviour
@@ -1150,8 +1447,8 @@ namespace YourGame.Services.UI
 ### Template: BasePopup
 
 ```csharp
-// Assets/Scripts/Services/UI/BasePopup.cs
-namespace YourGame.Services.UI
+// Assets/Scripts/Core/Services/UI/BasePopup.cs
+namespace Percas.Core.Services.UI
 {
     [RequireComponent(typeof(CanvasGroup))]
     public abstract class BasePopup : MonoBehaviour
@@ -1173,10 +1470,10 @@ namespace YourGame.Services.UI
 ### Template: UIPrefabsSO
 
 ```csharp
-// Assets/Scripts/Config/UIPrefabsSO.cs
+// Assets/Scripts/Core/Config/UIPrefabsSO.cs
 using UnityEngine;
 
-namespace YourGame.Config
+namespace Percas.Core.Config
 {
     /// <summary>
     /// SO chứa references trực tiếp đến tất cả UI prefab.
@@ -1205,12 +1502,12 @@ namespace YourGame.Config
 ### Template: UIService
 
 ```csharp
-// Assets/Scripts/Services/UI/UIService.cs
+// Assets/Scripts/Core/Services/UI/UIService.cs
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace YourGame.Services.UI
+namespace Percas.Core.Services.UI
 {
     public class UIService
     {
@@ -1316,8 +1613,8 @@ namespace YourGame.Services.UI
 ```csharp
 // ===== DATA MODEL — struct chứa đúng những gì UI cần hiển thị =====
 
-// Assets/Scripts/Services/UI/Screens/ResultScreenData.cs
-namespace YourGame.Services.UI
+// Assets/Scripts/Core/Services/UI/Screens/ResultScreenData.cs
+namespace Percas.Core.Services.UI
 {
     public struct ResultScreenData
     {
@@ -1330,8 +1627,8 @@ namespace YourGame.Services.UI
 
 // ===== SCREEN — chỉ nhận data và hiển thị, không tự query =====
 
-// Assets/Scripts/Services/UI/Screens/ResultScreen.cs
-namespace YourGame.Services.UI
+// Assets/Scripts/Core/Services/UI/Screens/ResultScreen.cs
+namespace Percas.Core.Services.UI
 {
     public class ResultScreen : BaseScreen
     {
@@ -1375,8 +1672,8 @@ resultScreen.OnShow(new ResultScreenData
 ```csharp
 // ===== POPUP VỚI DATA — ví dụ popup xác nhận mua booster =====
 
-// Assets/Scripts/Services/UI/Popups/PurchasePopupData.cs
-namespace YourGame.Services.UI
+// Assets/Scripts/Core/Services/UI/Popups/PurchasePopupData.cs
+namespace Percas.Core.Services.UI
 {
     public struct PurchasePopupData
     {
@@ -1387,8 +1684,8 @@ namespace YourGame.Services.UI
     }
 }
 
-// Assets/Scripts/Services/UI/Popups/PurchasePopup.cs
-namespace YourGame.Services.UI
+// Assets/Scripts/Core/Services/UI/Popups/PurchasePopup.cs
+namespace Percas.Core.Services.UI
 {
     public class PurchasePopup : BasePopup
     {
@@ -1450,7 +1747,7 @@ popup.OnShow(new PurchasePopupData
 
 ---
 
-## 14. Save / Load — Data Persistence
+## 15. Save / Load — Data Persistence
 
 ### Quyết định kiến trúc
 - Serialize/deserialize bằng `Newtonsoft.Json` (`JsonConvert`), lưu vào `PlayerPrefs`.
@@ -1469,8 +1766,8 @@ com.unity.nuget.newtonsoft-json
 ### Template: Data class theo feature
 
 ```csharp
-// Assets/Scripts/Services/UserData/ProgressData.cs
-namespace YourGame.Services.UserData
+// Assets/Scripts/Core/Services/UserData/ProgressData.cs
+namespace Percas.Core.Services.UserData
 {
     /// <summary>Data tiến trình chơi game.</summary>
     [System.Serializable]
@@ -1482,8 +1779,8 @@ namespace YourGame.Services.UserData
     }
 }
 
-// Assets/Scripts/Services/UserData/EconomyData.cs
-namespace YourGame.Services.UserData
+// Assets/Scripts/Core/Services/UserData/EconomyData.cs
+namespace Percas.Core.Services.UserData
 {
     /// <summary>Data tiền tệ và inventory.</summary>
     [System.Serializable]
@@ -1495,8 +1792,8 @@ namespace YourGame.Services.UserData
     }
 }
 
-// Assets/Scripts/Services/UserData/LivesData.cs
-namespace YourGame.Services.UserData
+// Assets/Scripts/Core/Services/UserData/LivesData.cs
+namespace Percas.Core.Services.UserData
 {
     /// <summary>Data hệ thống mạng.</summary>
     [System.Serializable]
@@ -1508,8 +1805,8 @@ namespace YourGame.Services.UserData
     }
 }
 
-// Assets/Scripts/Services/UserData/SettingsData.cs
-namespace YourGame.Services.UserData
+// Assets/Scripts/Core/Services/UserData/SettingsData.cs
+namespace Percas.Core.Services.UserData
 {
     /// <summary>Data cài đặt người dùng.</summary>
     [System.Serializable]
@@ -1525,13 +1822,13 @@ namespace YourGame.Services.UserData
 ### Template: UserDataService
 
 ```csharp
-// Assets/Scripts/Services/UserData/UserDataService.cs
+// Assets/Scripts/Core/Services/UserData/UserDataService.cs
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
 
-namespace YourGame.Services.UserData
+namespace Percas.Core.Services.UserData
 {
     public class UserDataService : IDisposable
     {
@@ -1666,7 +1963,7 @@ Debug.Log(userData.ExportAllToJson());
 
 ### Thêm feature data mới — Checklist
 
-1. Tạo data class mới: `XxxData.cs` trong `Assets/Scripts/Services/UserData/`.
+1. Tạo data class mới: `XxxData.cs` trong `Assets/Scripts/Core/Services/UserData/`.
 2. Thêm `const string KEY_XXX` vào `UserDataService`.
 3. Thêm property `public XxxData Xxx { get; private set; }`.
 4. Thêm `LoadEntry` trong `LoadAll()`, thêm `SaveEntry` trong `Save()`.
@@ -1717,7 +2014,7 @@ private void HandleSettingsChanged() => _userData.SaveSettings();
 
 ---
 
-## 15. Scene Management
+## 16. Scene Management
 
 ### Quyết định kiến trúc
 - **Bootstrap scene** (index 0) chứa `GameContext` — luôn load đầu tiên, không bao giờ unload.
@@ -1741,17 +2038,17 @@ Bootstrap (always loaded, DontDestroyOnLoad)
     │                                               └── Home → Unload Game → Load Home
 ```
 
-**Lưu ý:** Result là **popup** (xem [Section 13 — UI Architecture](#13-ui-architecture)), không phải scene riêng. Popup overlay lên Game scene — player vẫn thấy board phía sau.
+**Lưu ý:** Result là **popup** (xem [Section 14 — UI Architecture](#14-ui-architecture)), không phải scene riêng. Popup overlay lên Game scene — player vẫn thấy board phía sau.
 
 ### Template: SceneService
 
 ```csharp
-// Assets/Scripts/Services/Scene/SceneService.cs
+// Assets/Scripts/Core/Services/Scene/SceneService.cs
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace YourGame.Services.Scene
+namespace Percas.Core.Services.Scene
 {
     public class SceneService
     {
@@ -1808,7 +2105,7 @@ await sceneService.LoadScene("Game");
 
 ---
 
-## 16. Level Data Architecture
+## 17. Level Data Architecture
 
 ### Quyết định kiến trúc
 - Mỗi level là một **ScriptableObject riêng** (`LevelDataSO`) — edit độc lập trong Inspector, Git-friendly.
@@ -1820,10 +2117,10 @@ await sceneService.LoadScene("Game");
 ### Template: LevelDataSO
 
 ```csharp
-// Assets/Scripts/Config/LevelDataSO.cs
+// Assets/Scripts/Core/Config/LevelDataSO.cs
 using UnityEngine;
 
-namespace YourGame.Config
+namespace Percas.Core.Config
 {
     /// <summary>Cấu hình 1 level. Mỗi level là 1 asset SO riêng.</summary>
     [CreateAssetMenu(menuName = "Levels/LevelData")]
@@ -1862,11 +2159,11 @@ namespace YourGame.Config
 ### Template: AllLevelsSO — List references
 
 ```csharp
-// Assets/Scripts/Config/AllLevelsSO.cs
+// Assets/Scripts/Core/Config/AllLevelsSO.cs
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace YourGame.Config
+namespace Percas.Core.Config
 {
     /// <summary>
     /// SO trung tâm chứa references đến tất cả LevelDataSO.
@@ -1906,10 +2203,10 @@ namespace YourGame.Config
 ### Template: LevelManager
 
 ```csharp
-// Assets/Scripts/Services/Level/LevelManager.cs
+// Assets/Scripts/Core/Services/Level/LevelManager.cs
 using UnityEngine;
 
-namespace YourGame.Services.Level
+namespace Percas.Core.Services.Level
 {
     public class LevelManager
     {
@@ -2002,7 +2299,7 @@ Tool này nằm trong `Assets/Editor/` — không ship cùng game.
 
 ---
 
-## 17. Error Handling & Defensive Coding
+## 18. Error Handling & Defensive Coding
 
 ### ServiceLocator — Khi nào lỗi và cách debug
 
@@ -2021,7 +2318,7 @@ Tool này nằm trong `Assets/Editor/` — không ship cùng game.
 
 ### TryGet — Phiên bản an toàn
 
-`ServiceLocator.TryGet<T>()` đã có sẵn trong template (xem [Section 4](#4-bootstrap--service-locator)).
+`ServiceLocator.TryGet<T>()` đã có sẵn trong template (xem [Section 5](#5-bootstrap--service-locator)).
 
 **Khi nào dùng `TryGet` vs `Get`:**
 - `Get<T>()` — khi service **bắt buộc phải có** (99% trường hợp). Crash sớm = debug dễ.
@@ -2036,7 +2333,7 @@ Tool này nằm trong `Assets/Editor/` — không ship cùng game.
 
 ---
 
-## 18. Testing & Debug
+## 19. Testing & Debug
 
 ### Quyết định kiến trúc
 - **Không bắt buộc unit test cho gameplay** — gameplay thay đổi quá nhanh ở giai đoạn prototype.
@@ -2046,8 +2343,8 @@ Tool này nằm trong `Assets/Editor/` — không ship cùng game.
 ### Debug Tools — Convention
 
 ```csharp
-// Assets/Scripts/Bootstrap/DebugService.cs
-namespace YourGame.Bootstrap
+// Assets/Scripts/Core/Bootstrap/DebugService.cs
+namespace Percas.Core.Bootstrap
 {
     /// <summary>
     /// Service chỉ tồn tại trong Development build.
@@ -2123,16 +2420,16 @@ Debug.LogError($"[UserDataService] Save failed: {exception.Message}");
 
 ---
 
-## 19. Code Standards
+## 20. Code Standards
 
 ### Namespaces — bắt buộc
 
 ```csharp
-// File: Assets/Scripts/Services/Audio/AudioService.cs
-namespace YourGame.Services.Audio { ... }
+// File: Assets/Scripts/Core/Services/Audio/AudioService.cs
+namespace Percas.Core.Services.Audio { ... }
 
-// File: Assets/Scripts/GamePlay/Element/Basket/BasketElement.cs
-namespace YourGame.GamePlay.Element.Basket { ... }
+// File: Assets/Scripts/Game/GamePlay/Element/Basket/BasketElement.cs
+namespace Percas.SandLoop.GamePlay.Element.Basket { ... }
 ```
 
 Namespace phải khớp với cấu trúc thư mục.
@@ -2278,8 +2575,8 @@ private void Update()
 ### Utils
 
 ```csharp
-// Assets/Scripts/Utils.cs — MỘT file duy nhất, MỘT class static duy nhất
-namespace YourGame
+// Assets/Scripts/Core/Utils.cs — MỘT file duy nhất, MỘT class static duy nhất
+namespace Percas.Core
 {
     public static class Utils
     {
@@ -2294,24 +2591,245 @@ namespace YourGame
 
 ---
 
-## 20. Branch Strategy
+## 21. Branch Strategy
+
+### Branch Structure
 
 ```
-main              ← production, luôn ổn định
-dev               ← active feature development
-feature/xxx       ← branch cho từng feature cụ thể (merge vào dev khi xong)
+main              ← production-ready code, luôn ổn định
+develop           ← integration branch cho tất cả development
+feature/*         ← branch cho từng feature cụ thể
+release/*         ← chuẩn bị production release
+hotfix/*          ← fix critical production issues
 ```
-
-**Quy trình:**
-- Tạo branch `feature/xxx` từ `dev` cho mỗi feature hoặc task.
-- Code, test trên feature branch → tạo Pull Request vào `dev`.
-- Code review bắt buộc trước khi merge.
-- Khi `dev` ổn định, đủ feature cho bản build → merge vào `main`.
-- Hotfix: tạo branch `hotfix/xxx` từ `main`, fix xong merge vào cả `main` và `dev`.
 
 ---
 
-## 21. Project Setup Checklist
+### main
+
+**Mục đích:** Chứa code production-ready duy nhất.
+
+**Quy tắc:**
+- **Không** commit trực tiếp vào `main`.
+- Chỉ nhận merge từ `release/*` hoặc `hotfix/*` qua Pull Request.
+- Mỗi lần merge vào `main` **phải** tag version.
+
+**Ví dụ tag:** `v1.0.0`, `v1.1.0`, `v1.1.1`
+
+---
+
+### Versioning Rules — Semantic Versioning
+
+Tất cả version tag tuân theo format **Major.Minor.Patch (X.Y.Z)**.
+
+#### Patch (Z) — tăng khi:
+- Hotfix production
+- Fix bug
+- Cải thiện nhỏ (performance, UI glitch)
+
+```
+1.2.3 → 1.2.4    (fix crash on level start)
+1.2.4 → 1.2.5    (fix UI glitch)
+1.2.5 → 1.2.6    (minor performance improvement)
+```
+
+#### Minor (Y) — tăng khi:
+- Thêm feature mới
+- Thêm gameplay changes hoặc improvements
+- Thêm system mới **mà không ảnh hưởng** chức năng hiện tại
+
+Khi tăng Minor → **Patch reset về 0**.
+
+```
+1.2.6 → 1.3.0    (new obstacle added)
+1.3.2 → 1.4.0    (new game mode introduced)
+```
+
+#### Major (X) — tăng khi:
+- Thay đổi lớn ảnh hưởng toàn bộ game
+- Refactor lớn
+- Thay đổi **không tương thích** với data/system cũ (breaking changes)
+
+Khi tăng Major → **Minor và Patch đều reset về 0**.
+
+```
+1.4.3 → 2.0.0    (core gameplay refactor)
+2.1.5 → 3.0.0    (new save system incompatible with old data)
+```
+
+#### Tóm tắt
+
+| Loại | Khi nào | Ví dụ |
+|---|---|---|
+| **Patch** (Z) | Bug fixes, hotfix | `1.2.3 → 1.2.4` |
+| **Minor** (Y) | Feature mới, không breaking | `1.2.6 → 1.3.0` |
+| **Major** (X) | Thay đổi lớn, breaking changes | `1.4.3 → 2.0.0` |
+
+---
+
+### develop
+
+**Mục đích:** Branch tích hợp chính cho tất cả development đang diễn ra.
+
+**Quy tắc:**
+- **Không** commit trực tiếp vào `develop`.
+- Tất cả `feature/*` branch tạo **từ** `develop`.
+- Tất cả feature hoàn thành merge **về** `develop` qua Pull Request.
+- `develop` phải luôn ở trạng thái **buildable** — không được break build.
+
+---
+
+### feature/* — Phát triển tính năng
+
+**Naming:** `feature/<feature-name>`
+
+**Ví dụ:** `feature/new-shop-ui`, `feature/daily-reward`, `feature/economy-balance`
+
+**Quy trình từng bước:**
+
+```
+1. Tạo feature branch từ develop
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/daily-reward
+
+2. Code + commit trên feature branch
+   git add .
+   git commit -m "Add daily reward UI"
+
+3. Push và tạo Pull Request → develop
+   git push origin feature/daily-reward
+   → Tạo PR trên GitHub/GitLab → target: develop
+
+4. Code review (ít nhất 1 reviewer)
+   → Reviewer approve → Merge PR
+
+5. Xóa feature branch sau khi merge
+   git branch -d feature/daily-reward
+```
+
+**Flow:**
+```
+develop → feature/daily-reward → Pull Request → develop
+```
+
+---
+
+### release/* — Chuẩn bị release
+
+**Naming:** `release/<version>`
+
+**Ví dụ:** `release/1.2.0`, `release/1.3.0`
+
+**Khi nào tạo:** Khi tất cả feature planned cho version đã merge vào `develop`.
+
+**Chỉ được làm trên release branch:**
+- Bug fixes
+- Balancing
+- Configuration adjustments
+- Version number updates
+
+**KHÔNG được thêm feature mới.**
+
+**Quy trình từng bước:**
+
+```
+1. Tạo release branch từ develop
+   git checkout develop
+   git pull origin develop
+   git checkout -b release/1.3.0
+
+2. QA test trên release branch
+   → Fix bugs nếu có, commit trực tiếp trên release branch
+   git commit -m "Fix crash on level 42"
+
+3. Khi QA approve — merge vào main
+   git checkout main
+   git merge release/1.3.0
+   git tag v1.3.0
+   git push origin main --tags
+
+4. Merge ngược vào develop (để develop có bugfix)
+   git checkout develop
+   git merge release/1.3.0
+   git push origin develop
+
+5. Xóa release branch
+   git branch -d release/1.3.0
+```
+
+**Flow:**
+```
+develop → release/1.3.0 → QA test → main (tag v1.3.0)
+                                   ↘ develop
+```
+
+---
+
+### hotfix/* — Fix lỗi production khẩn cấp
+
+**Naming:** `hotfix/<issue>`
+
+**Ví dụ:** `hotfix/crash-on-start`, `hotfix/ios-purchase-fix`
+
+**Khi nào tạo:** Khi phát hiện lỗi critical trên production (`main`) cần fix ngay.
+
+**Quy trình từng bước:**
+
+```
+1. Tạo hotfix branch từ main
+   git checkout main
+   git pull origin main
+   git checkout -b hotfix/crash-on-start
+
+2. Fix bug + test
+   git commit -m "Fix null reference crash on start"
+
+3. Merge vào main
+   git checkout main
+   git merge hotfix/crash-on-start
+   git tag v1.3.1
+   git push origin main --tags
+
+4. Merge vào develop (để develop cũng có fix)
+   git checkout develop
+   git merge hotfix/crash-on-start
+   git push origin develop
+
+5. Xóa hotfix branch
+   git branch -d hotfix/crash-on-start
+```
+
+**Flow:**
+```
+main → hotfix/crash-on-start → main (tag v1.3.1)
+                              ↘ develop
+```
+
+---
+
+### Tổng quan Flow
+
+```
+Feature Flow:
+feature/* → develop → release/x.y.z → main
+                                     ↘ develop
+
+Hotfix Flow:
+main → hotfix/* → main
+                ↘ develop
+```
+
+### Quy tắc chung
+
+- **Tất cả merge** phải qua Pull Request — không merge trực tiếp.
+- **Ít nhất 1 code review** trước khi approve PR.
+- **Không commit trực tiếp** vào `main` hoặc `develop`.
+- **Mỗi production release** phải có version tag (`v1.0.0`, `v1.1.0`, ...).
+
+---
+
+## 22. Project Setup Checklist
 
 Dùng checklist này khi bắt đầu một dự án mới. Làm theo thứ tự từ trên xuống.
 
@@ -2320,9 +2838,10 @@ Dùng checklist này khi bắt đầu một dự án mới. Làm theo thứ tự
 - [ ] Tạo Unity project mới (2022.3 LTS, URP)
 - [ ] Import UniTask từ GitHub Release (.unitypackage)
 - [ ] Import Newtonsoft.Json (`com.unity.nuget.newtonsoft-json`)
-- [ ] Tạo cấu trúc thư mục theo Section 3
+- [ ] Tạo cấu trúc thư mục: `Scripts/Core/` + `Scripts/Game/` theo Section 3
+- [ ] Copy `Core/` từ template (nếu có sẵn từ project trước)
 - [ ] Setup .gitignore cho Unity
-- [ ] Init Git repo, tạo branch `main` và `dev`
+- [ ] Init Git repo, tạo branch `main` và `develop`
 
 ## Phase 2 — Bootstrap & Core Services
 - [ ] Tạo scene `Bootstrap`, đặt index 0 trong Build Settings
@@ -2367,8 +2886,11 @@ Dùng checklist này khi bắt đầu một dự án mới. Làm theo thứ tự
 - [ ] Tạo `LevelDataSO` đầu tiên, kéo vào `AllLevelsSO` list
 - [ ] Test: load level → gameplay nhận đúng data
 
-## Phase 8 — Gameplay
-- [ ] Implement gameplay controllers và elements
+## Phase 8 — Gameplay (MVP)
+- [ ] Tạo Model đầu tiên (LivesModel hoặc tương đương) — pure C#
+- [ ] Tạo View đầu tiên (LivesView) — MonoBehaviour, passive
+- [ ] Tạo Presenter đầu tiên (LivesPresenter) — kết nối Model ↔ View
+- [ ] Implement game elements trong `Game/GamePlay/Element/`
 - [ ] Implement `ObstacleRegistry` nếu game có nhiều loại element
 - [ ] Kết nối gameplay events (OnLevelComplete, OnLevelFail) với UI + save
 
@@ -2382,7 +2904,7 @@ Dùng checklist này khi bắt đầu một dự án mới. Làm theo thứ tự
 
 ---
 
-## 22. Những thứ KHÔNG làm
+## 23. Những thứ KHÔNG làm
 
 | Đừng | Làm thay vào đó |
 |---|---|
@@ -2412,6 +2934,11 @@ Dùng checklist này khi bắt đầu một dự án mới. Làm theo thứ tự
 | `LoadSceneMode.Single` | `LoadSceneMode.Additive` — Single sẽ destroy GameContext |
 | Ghi runtime state vào LevelDataSO | Level SO chỉ chứa input — runtime state ở controller |
 | Load level data mỗi lần chuyển level | Dùng `AllLevelsSO` — load 1 lần, truy cập O(1) |
+| Business logic trong View (MonoBehaviour) | Logic ở Model (pure C#), View chỉ render |
+| View truy cập ServiceLocator trực tiếp | Chỉ Presenter gọi Service, View fire event |
+| Model reference Unity API (MonoBehaviour, Transform) | Model là pure C# — không dependency Unity |
+| Đặt code game-specific vào `Core/` | Game-specific code vào `Game/`, Core chỉ chứa reusable |
+| Fork Core cho từng project | Copy nguyên Core, fix bug → copy ngược template |
 
 ---
 
